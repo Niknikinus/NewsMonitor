@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NewsMonitor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0c0f;
+    --bg2: #141418;
+    --bg3: #1c1c22;
+    --bg4: #242430;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #6366f1;
+    --accent2: #818cf8;
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --text: #e8e8f0;
+    --text2: #9898b0;
+    --text3: #5a5a75;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Manrope', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body, #root { height: 100%; width: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 13px; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 4px; }
+  ::selection { background: var(--accent); color: white; }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; }
+  .left-panel { width: 220px; min-width: 180px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg2); }
+  .mid-panel { width: 320px; min-width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: var(--bg); }
+  .right-panel { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+
+  /* Auth page */
+  .auth-page { height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .auth-card { width: 400px; background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 40px; }
+  .auth-logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 32px; }
+  .auth-logo span { color: var(--accent2); }
+
+  /* Form elements */
+  .field { margin-bottom: 16px; }
+  .field label { display: block; font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .field input, .field select, .field textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 10px 12px; color: var(--text); font-family: var(--sans);
+    font-size: 13px; outline: none; transition: border-color 0.15s;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); }
+  .field textarea { resize: vertical; min-height: 70px; }
+
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; font-family: var(--sans); }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary { background: var(--bg3); color: var(--text); border: 1px solid var(--border2); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
+  .btn-danger { background: transparent; color: var(--red); border: 1px solid rgba(248,113,113,0.3); }
+  .btn-danger:hover { background: rgba(248,113,113,0.1); }
+  .btn-ghost { background: transparent; color: var(--text2); }
+  .btn-ghost:hover { color: var(--text); background: var(--bg3); }
+  .btn-sm { padding: 5px 10px; font-size: 11px; border-radius: 6px; }
+  .btn-full { width: 100%; justify-content: center; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-green { background: rgba(52,211,153,0.15); color: var(--green); border: 1px solid rgba(52,211,153,0.25); }
+  .btn-green:hover { background: rgba(52,211,153,0.25); }
+
+  /* Panel headers */
+  .panel-header { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 8px; min-height: 48px; }
+  .panel-title { font-size: 11px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; flex: 1; }
+  .panel-footer { padding: 10px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; }
+
+  /* Feed list */
+  .feed-item { padding: 9px 12px; margin: 2px 6px; border-radius: 8px; cursor: pointer; transition: background 0.1s; display: flex; align-items: center; gap: 8px; }
+  .feed-item:hover { background: var(--bg3); }
+  .feed-item.active { background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.2); }
+  .feed-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .feed-name { flex: 1; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .feed-badge { background: var(--accent); color: white; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; }
+
+  /* Cluster cards */
+  .cluster-card { padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+  .cluster-card:hover { background: var(--bg2); }
+  .cluster-card.active { background: rgba(99,102,241,0.08); border-left: 2px solid var(--accent); }
+  .cluster-title { font-size: 13px; font-weight: 600; line-height: 1.4; margin-bottom: 4px; color: var(--text); }
+  .cluster-title.read { font-weight: 400; color: var(--text2); }
+  .cluster-meta { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 8px; }
+  .cluster-sub { margin-top: 8px; display: flex; flex-direction: column; gap: 3px; }
+  .cluster-sub-item { font-size: 11px; color: var(--text2); display: flex; align-items: flex-start; gap: 6px; }
+  .cluster-sub-dash { color: var(--text3); flex-shrink: 0; margin-top: 1px; }
+
+  /* Article detail */
+  .article-detail { flex: 1; overflow: auto; padding: 24px 28px; }
+  .article-summary-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+  .summary-label { font-size: 10px; font-weight: 700; color: var(--accent2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .why-box { background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.15); border-radius: 8px; padding: 10px 14px; margin-top: 10px; font-size: 12px; color: var(--text2); line-height: 1.6; }
+  .angles { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .angle-pill { background: var(--bg3); border: 1px solid var(--border2); border-radius: 20px; padding: 3px 10px; font-size: 11px; color: var(--text2); }
+
+  /* Article list in detail */
+  .article-list { border-top: 1px solid var(--border); }
+  .article-row { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+  .article-row:hover .article-row-title { color: var(--accent2); }
+  .article-row-content { flex: 1; }
+  .article-row-title { font-size: 13px; font-weight: 500; line-height: 1.4; color: var(--text); transition: color 0.1s; }
+  .article-row-meta { font-size: 11px; color: var(--text3); margin-top: 3px; display: flex; gap: 8px; }
+  .article-row-summary { font-size: 11px; color: var(--text2); margin-top: 4px; line-height: 1.5; }
+  .article-row-actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.1s; flex-shrink: 0; }
+  .article-row:hover .article-row-actions { opacity: 1; }
+
+  /* Iframe / web view */
+  .webview { flex: 1; border: none; background: white; }
+
+  /* Status bar */
+  .status-bar { padding: 6px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: var(--bg2); font-size: 11px; color: var(--text3); }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* Pipeline status */
+  .pipeline-bar { padding: 8px 14px; border-top: 1px solid var(--border); background: rgba(99,102,241,0.05); display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--accent2); }
+
+  /* Modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; display: flex; align-items: center; justify-content: center; }
+  .modal { background: var(--bg2); border: 1px solid var(--border2); border-radius: 16px; padding: 28px; min-width: 440px; max-width: 560px; max-height: 85vh; overflow-y: auto; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .modal-title { font-size: 17px; font-weight: 700; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 24px; }
+
+  /* Admin panel */
+  .admin-panel { padding: 28px; overflow: auto; }
+  .admin-section { margin-bottom: 32px; }
+  .admin-section-title { font-size: 13px; font-weight: 700; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .user-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: var(--bg3); border-radius: 10px; margin-bottom: 8px; }
+  .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--bg4); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--accent2); font-size: 14px; flex-shrink: 0; }
+  .user-info { flex: 1; }
+  .user-email { font-size: 13px; font-weight: 600; }
+  .user-name { font-size: 11px; color: var(--text2); }
+  .user-meta { font-size: 10px; color: var(--text3); }
+  .role-badge { padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+  .role-pending { background: rgba(251,191,36,0.15); color: var(--yellow); }
+  .role-approved { background: rgba(52,211,153,0.15); color: var(--green); }
+  .role-admin { background: rgba(99,102,241,0.15); color: var(--accent2); }
+  .role-rejected { background: rgba(248,113,113,0.1); color: var(--red); }
+
+  /* Stats cards */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat-card { background: var(--bg3); border-radius: 10px; padding: 16px; }
+  .stat-value { font-size: 28px; font-weight: 800; color: var(--text); font-family: var(--mono); }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+  /* Toast */
+  .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 200; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .toast { background: rgba(30,30,40,0.95); backdrop-filter: blur(12px); border: 1px solid var(--border2); border-radius: 20px; padding: 10px 20px; font-size: 13px; font-weight: 500; color: var(--text); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 2px; background: var(--bg3); border-radius: 8px; padding: 3px; }
+  .tab { padding: 5px 12px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text2); transition: all 0.15s; border: none; background: transparent; font-family: var(--sans); }
+  .tab.active { background: var(--bg2); color: var(--text); }
+
+  /* Empty state */
+  .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 12px; color: var(--text3); padding: 40px; text-align: center; }
+  .empty-icon { font-size: 40px; opacity: 0.3; }
+  .empty-title { font-size: 15px; font-weight: 600; color: var(--text2); }
+  .empty-sub { font-size: 12px; }
+
+  /* Spinner */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  .spinner-sm { width: 12px; height: 12px; }
+
+  /* Day picker */
+  .day-picker { display: flex; gap: 4px; }
+  .day-btn { width: 32px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--bg3); color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.15s; font-family: var(--sans); }
+  .day-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+  /* Pipeline progress */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  .pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+  /* Offline banner */
+  .offline-banner { background: rgba(248,113,113,0.12); border-bottom: 1px solid rgba(248,113,113,0.25); padding: 8px 16px; display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--red); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ─── API Client ───────────────────────────────────────────────────────────────
+
+const API_BASE = "http://127.0.0.1:8000";
+
+const api = {
+  token: localStorage.getItem("nm_token"),
+  user: JSON.parse(localStorage.getItem("nm_user") || "null"),
+
+  headers() {
+    const h = { "Content-Type": "application/json" };
+    if (this.token) h["Authorization"] = `Bearer ${this.token}`;
+    return h;
+  },
+
+  async req(method, path, body, raw = false) {
+    const res = await fetch(API_BASE + path, {
+      method, headers: this.headers(),
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    if (raw) return res;
+    return res.json();
+  },
+
+  get: (p) => api.req("GET", p),
+  post: (p, b) => api.req("POST", p, b),
+  patch: (p, b) => api.req("PATCH", p, b),
+  delete: (p) => api.req("DELETE", p),
+};
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+
+function relTime(dateStr) {
+  if (!dateStr) return "";
+  // Добавляем Z если нет timezone suffix
+  const normalized = /[Z+\-]\d*$/.test(dateStr) ? dateStr : dateStr + "Z";
+  const d = new Date(normalized);
+  const diff = (Date.now() - d) / 1000;
+  if (diff < 60) return "только что";
+  if (diff < 3600) return `${Math.floor(diff/60)} мин. назад`;
+  if (diff < 86400) return `${Math.floor(diff/3600)} ч. назад`;
+  const days = Math.floor(diff / 86400);
+  if (days === 1) return "вчера";
+  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+}
+
+function copyToClipboard(text, toast) {
+  navigator.clipboard.writeText(text).then(() => toast("Ссылка скопирована")).catch(() => {
+    const el = document.createElement("textarea");
+    el.value = text; document.body.appendChild(el); el.select();
+    document.execCommand("copy"); document.body.removeChild(el);
+    toast("Ссылка скопирована");
+  });
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+
+function useToast() {
+  const [toasts, setToasts] = useState([]);
+  const show = useCallback((msg) => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3500);
+  }, []);
+  return { toasts, show };
+}
+
+function ToastContainer({ toasts }) {
+  return (
+    <div className="toast-container">
+      {toasts.map(t => <div key={t.id} className="toast">{t.msg}</div>)}
+    </div>
+  );
+}
+
+// ─── Auth Pages ───────────────────────────────────────────────────────────────
+
+function AuthPage({ onLogin }) {
+  const [mode, setMode] = useState("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  async function handleLogin(e) {
+    e.preventDefault(); setError(""); setLoading(true);
+    try {
+      const data = await api.post("/auth/login", { email, password });
+      api.token = data.access_token;
+      api.user = data;
+      localStorage.setItem("nm_token", data.access_token);
+      localStorage.setItem("nm_user", JSON.stringify(data));
+      onLogin(data);
+    } catch(err) { setError(err.message); }
+    setLoading(false);
+  }
+
+  async function handleRegister(e) {
+    e.preventDefault(); setError(""); setLoading(true);
+    try {
+      const data = await api.post("/auth/register", { email, password, full_name: name });
+      setSuccess(data.message);
+      setMode("login");
+    } catch(err) { setError(err.message); }
+    setLoading(false);
+  }
+
+  return (
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-logo">News<span>Monitor</span></div>
+
+        <div className="tabs" style={{marginBottom: 24}}>
+          <button className={`tab ${mode==="login"?"active":""}`} onClick={() => { setMode("login"); setError(""); setSuccess(""); }}>Войти</button>
+          <button className={`tab ${mode==="register"?"active":""}`} onClick={() => { setMode("register"); setError(""); setSuccess(""); }}>Регистрация</button>
+        </div>
+
+        {success && <div style={{background:"rgba(52,211,153,0.1)",border:"1px solid rgba(52,211,153,0.25)",borderRadius:8,padding:"10px 14px",color:"var(--green)",fontSize:13,marginBottom:16}}>{success}</div>}
+        {error && <div style={{background:"rgba(248,113,113,0.1)",border:"1px solid rgba(248,113,113,0.25)",borderRadius:8,padding:"10px 14px",color:"var(--red)",fontSize:13,marginBottom:16}}>{error}</div>}
+
+        <form onSubmit={mode === "login" ? handleLogin : handleRegister}>
+          {mode === "register" && (
+            <div className="field">
+              <label>Имя</label>
+              <input value={name} onChange={e => setName(e.target.value)} placeholder="Как вас зовут?" />
+            </div>
+          )}
+          <div className="field">
+            <label>Email</label>
+            <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="you@example.com" required />
+          </div>
+          <div className="field">
+            <label>Пароль</label>
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" required minLength={6} />
+          </div>
+          <button className="btn btn-primary btn-full" type="submit" disabled={loading} style={{marginTop:8}}>
+            {loading ? <span className="spinner spinner-sm" /> : null}
+            {mode === "login" ? "Войти" : "Зарегистрироваться"}
+          </button>
+        </form>
+
+        {mode === "register" && (
+          <p style={{fontSize:11,color:"var(--text3)",marginTop:16,lineHeight:1.6,textAlign:"center"}}>
+            После регистрации администратор проверит заявку и активирует аккаунт.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Admin Panel ───────────────────────────────────────────────────────────────
+
+function AdminPanel({ onBack, toast }) {
+  const [stats, setStats] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [filter, setFilter] = useState("pending");
+  const [loading, setLoading] = useState(false);
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [s, u] = await Promise.all([
+        api.get("/admin/stats"),
+        api.get(`/admin/users${filter ? `?status_filter=${filter}` : ""}`),
+      ]);
+      setStats(s); setUsers(u);
+    } catch(e) { toast("Ошибка: " + e.message); }
+    setLoading(false);
+  }, [filter]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  async function approve(userId, notes = "") {
+    try {
+      await api.post("/admin/approve", { user_id: userId, notes });
+      toast("Пользователь подтверждён ✓"); loadData();
+    } catch(e) { toast("Ошибка: " + e.message); }
+  }
+
+  async function reject(userId) {
+    try {
+      await api.post("/admin/reject", { user_id: userId, reason: "Отклонено администратором" });
+      toast("Пользователь отклонён"); loadData();
+    } catch(e) { toast("Ошибка: " + e.message); }
+  }
+
+  async function del(userId) {
+    if (!confirm("Удалить пользователя?")) return;
+    try {
+      await api.delete(`/admin/users/${userId}`);
+      toast("Удалено"); loadData();
+    } catch(e) { toast("Ошибка: " + e.message); }
+  }
+
+  const roleBadge = (role) => {
+    const map = { pending: "pending", approved: "approved", admin: "admin", rejected: "rejected" };
+    const labels = { pending: "Ожидает", approved: "Активен", admin: "Админ", rejected: "Отклонён" };
+    return <span className={`role-badge role-${map[role]||"pending"}`}>{labels[role] || role}</span>;
+  };
+
+  return (
+    <div style={{height:"100vh",overflow:"auto",background:"var(--bg)"}}>
+      <div style={{padding:"20px 28px",borderBottom:"1px solid var(--border)",display:"flex",alignItems:"center",gap:12}}>
+        <button className="btn btn-secondary btn-sm" onClick={onBack}>← Назад</button>
+        <h1 style={{fontSize:18,fontWeight:800}}>Администрирование</h1>
+        {loading && <span className="spinner spinner-sm" />}
+        <button className="btn btn-ghost btn-sm" style={{marginLeft:"auto"}} onClick={loadData}>Обновить</button>
+      </div>
+
+      <div className="admin-panel">
+        {stats && (
+          <div className="stats-grid">
+            {[["Всего", stats.total, "var(--text)"], ["Ожидают", stats.pending, "var(--yellow)"], ["Активных", stats.approved, "var(--green)"], ["Админов", stats.admins, "var(--accent2)"]].map(([l, v, c]) => (
+              <div key={l} className="stat-card">
+                <div className="stat-value" style={{color:c}}>{v}</div>
+                <div className="stat-label">{l}</div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="admin-section">
+          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
+            <div className="admin-section-title" style={{marginBottom:0,borderBottom:"none",flex:1}}>Пользователи</div>
+            <div className="tabs">
+              {[["pending","Ожидают"],["approved","Активные"],["admin","Админы"],["","Все"]].map(([v,l]) => (
+                <button key={v} className={`tab ${filter===v?"active":""}`} onClick={() => setFilter(v)}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {users.length === 0 && !loading && (
+            <div style={{color:"var(--text3)",fontSize:13,padding:"20px 0"}}>Нет пользователей в этой категории</div>
+          )}
+
+          {users.map(u => (
+            <div key={u.id} className="user-row">
+              <div className="user-avatar">{u.full_name?.[0]?.toUpperCase() || u.email[0].toUpperCase()}</div>
+              <div className="user-info">
+                <div className="user-email">{u.email}</div>
+                {u.full_name && <div className="user-name">{u.full_name}</div>}
+                <div className="user-meta">
+                  Зарегистрирован {new Date(u.created_at).toLocaleDateString("ru-RU")}
+                  {u.approved_at && ` · Подтверждён ${new Date(u.approved_at).toLocaleDateString("ru-RU")}`}
+                  {u.notes && ` · ${u.notes}`}
+                </div>
+              </div>
+              {roleBadge(u.role)}
+              <div style={{display:"flex",gap:6}}>
+                {u.role === "pending" && <>
+                  <button className="btn btn-green btn-sm" onClick={() => approve(u.id)}>Подтвердить</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => reject(u.id)}>Отклонить</button>
+                </>}
+                {u.role === "approved" && (
+                  <button className="btn btn-secondary btn-sm" onClick={() => api.post(`/admin/make-admin/${u.id}`).then(() => { toast("Назначен admin"); loadData(); })}>→ Админ</button>
+                )}
+                {u.role !== "admin" && (
+                  <button className="btn btn-ghost btn-sm" style={{color:"var(--red)"}} onClick={() => del(u.id)}>✕</button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Feed Modal ────────────────────────────────────────────────────────────────
+
+function FeedModal({ feed, onClose, onSave, toast }) {
+  const DAYS = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+  const [name, setName] = useState(feed?.name || "");
+  const [desc, setDesc] = useState(feed?.description || "");
+  const [lang, setLang] = useState(feed?.language || "ru");
+  const [mode, setMode] = useState(feed?.mode || "standard");
+  const [days, setDays] = useState(new Set(feed?.schedule_days || [0,1,2,3,4]));
+  const [times, setTimes] = useState((feed?.delivery_times || ["08:00","18:00"]).join(", "));
+  const [saving, setSaving] = useState(false);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const payload = {
+        name, description: desc, language: lang, mode,
+        schedule_days: [...days].sort(),
+        delivery_times: times.split(",").map(t => t.trim()).filter(Boolean),
+      };
+      if (feed) {
+        await api.patch(`/feeds/${feed.id}`, payload);
+      } else {
+        await api.post("/feeds", payload);
+      }
+      onSave();
+    } catch(e) { toast("Ошибка: " + e.message); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">{feed ? "Настройки ленты" : "Новая лента"}</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="field"><label>Название</label>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Например: ИИ-новости" /></div>
+        <div className="field"><label>Описание темы</label>
+          <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="Опишите тему для ИИ-фильтрации и подбора источников" /></div>
+        <div className="field"><label>Язык вывода</label>
+          <select value={lang} onChange={e => setLang(e.target.value)}>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select></div>
+        <div className="field"><label>Режим</label>
+          <select value={mode} onChange={e => setMode(e.target.value)}>
+            <option value="standard">Стандартный</option>
+            <option value="breaking">Срочные новости</option>
+          </select></div>
+        <div className="field">
+          <label>Дни доставки</label>
+          <div className="day-picker">
+            {DAYS.map((d,i) => (
+              <button key={i} type="button"
+                className={`day-btn ${days.has(i)?"active":""}`}
+                onClick={() => setDays(s => { const n = new Set(s); n.has(i)?n.delete(i):n.add(i); return n; })}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
+          <label>Время доставки дайджеста</label>
+          <input value={times} onChange={e => setTimes(e.target.value)} placeholder="08:00, 18:00" />
+          <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>Сбор запустится за 5 мин до указанного времени</div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
+          <button className="btn btn-primary" onClick={save} disabled={!name || saving}>
+            {saving ? <span className="spinner spinner-sm" /> : null}
+            {feed ? "Сохранить" : "Создать"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sources Modal ─────────────────────────────────────────────────────────────
+
+function SourcesModal({ feed, onClose, toast }) {
+  const [sources, setSources] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [discovering, setDiscovering] = useState(false);
+  const [discoverTopic, setDiscoverTopic] = useState("");
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [newSrc, setNewSrc] = useState({ name:"", url:"", tier:2, source_type:"rss" });
+
+  async function load() {
+    setLoading(true);
+    try { setSources(await api.get(`/sources/feed/${feed.id}`)); } catch(e) {}
+    setLoading(false);
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function addSource() {
+    try {
+      await api.post("/sources", { ...newSrc, feed_id: feed.id });
+      setNewSrc({ name:"", url:"", tier:2, source_type:"rss" });
+      setShowAddForm(false); load(); toast("Источник добавлен");
+    } catch(e) { toast("Ошибка: " + e.message); }
+  }
+
+  async function discover() {
+    setDiscovering(true);
+    try {
+      await api.post("/sources/discover", { feed_id: feed.id, topic_description: discoverTopic });
+      setDiscoverTopic(""); load(); toast("Источники найдены ✓");
+    } catch(e) { toast("Ошибка: " + e.message); }
+    setDiscovering(false);
+  }
+
+  async function toggleSource(src) {
+    try {
+      await api.patch(`/sources/${src.id}`, { is_active: !src.is_active });
+      load();
+    } catch(e) {}
+  }
+
+  async function delSource(id) {
+    try { await api.delete(`/sources/${id}`); load(); toast("Удалено"); } catch(e) {}
+  }
+
+  const tierColors = { 1: "var(--accent2)", 2: "var(--green)", 3: "var(--yellow)" };
+  const tierLabels = { 1: "Tier 1", 2: "Tier 2", 3: "Tier 3" };
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal" style={{minWidth:600}}>
+        <div className="modal-header">
+          <div className="modal-title">Источники — {feed.name}</div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="btn btn-secondary btn-sm" onClick={() => setShowAddForm(!showAddForm)}>+ Добавить</button>
+            <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+          </div>
+        </div>
+
+        {/* AI Discover */}
+        <div style={{background:"var(--bg3)",borderRadius:10,padding:"12px 14px",marginBottom:16}}>
+          <div style={{fontSize:11,fontWeight:700,color:"var(--accent2)",marginBottom:8}}>✦ ИИ-подбор источников</div>
+          <div style={{display:"flex",gap:8}}>
+            <input value={discoverTopic} onChange={e => setDiscoverTopic(e.target.value)}
+              placeholder="Опишите тему (русский или английский)"
+              style={{flex:1,background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:7,padding:"8px 12px",color:"var(--text)",fontFamily:"var(--sans)",fontSize:13,outline:"none"}} />
+            <button className="btn btn-primary btn-sm" onClick={discover} disabled={!discoverTopic||discovering}>
+              {discovering ? <span className="spinner spinner-sm" /> : "Найти"}
+            </button>
+          </div>
+        </div>
+
+        {/* Add form */}
+        {showAddForm && (
+          <div style={{background:"var(--bg3)",borderRadius:10,padding:"12px 14px",marginBottom:16,display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <input value={newSrc.name} onChange={e => setNewSrc({...newSrc,name:e.target.value})} placeholder="Название"
+              style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:7,padding:"8px 12px",color:"var(--text)",fontFamily:"var(--sans)",fontSize:13,outline:"none"}} />
+            <input value={newSrc.url} onChange={e => setNewSrc({...newSrc,url:e.target.value})} placeholder="URL / RSS"
+              style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:7,padding:"8px 12px",color:"var(--text)",fontFamily:"var(--sans)",fontSize:13,outline:"none"}} />
+            <select value={newSrc.tier} onChange={e => setNewSrc({...newSrc,tier:+e.target.value})}
+              style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:7,padding:"8px 12px",color:"var(--text)",fontFamily:"var(--sans)",fontSize:13,outline:"none"}}>
+              <option value={1}>Tier 1 — Крупные СМИ</option>
+              <option value={2}>Tier 2 — Нишевые</option>
+              <option value={3}>Tier 3 — Блоги</option>
+            </select>
+            <select value={newSrc.source_type} onChange={e => setNewSrc({...newSrc,source_type:e.target.value})}
+              style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:7,padding:"8px 12px",color:"var(--text)",fontFamily:"var(--sans)",fontSize:13,outline:"none"}}>
+              <option value="rss">RSS</option><option value="html">HTML</option><option value="agent">Browser</option>
+            </select>
+            <div style={{gridColumn:"1/-1",display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button className="btn btn-secondary btn-sm" onClick={() => setShowAddForm(false)}>Отмена</button>
+              <button className="btn btn-primary btn-sm" onClick={addSource} disabled={!newSrc.name||!newSrc.url}>Добавить</button>
+            </div>
+          </div>
+        )}
+
+        {/* Source list */}
+        <div style={{maxHeight:320,overflowY:"auto"}}>
+          {loading ? <div style={{display:"flex",justifyContent:"center",padding:20}}><span className="spinner" /></div> :
+           sources.length === 0 ? <div style={{color:"var(--text3)",fontSize:13,padding:"16px 0",textAlign:"center"}}>Нет источников</div> :
+           sources.map(s => (
+            <div key={s.id} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderBottom:"1px solid var(--border)"}}>
+              <input type="checkbox" checked={s.is_active} onChange={() => toggleSource(s)} style={{accentColor:"var(--accent)"}} />
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,fontWeight:500}}>{s.name}</div>
+                <div style={{fontSize:11,color:"var(--text3)"}}>{s.url}</div>
+              </div>
+              <span style={{fontSize:10,fontWeight:700,color:tierColors[s.tier],padding:"2px 7px",background:"var(--bg3)",borderRadius:10}}>{tierLabels[s.tier]}</span>
+              <span style={{fontSize:10,color:"var(--text3)",background:"var(--bg3)",padding:"2px 6px",borderRadius:4}}>{s.source_type.toUpperCase()}</span>
+              <button className="btn btn-ghost btn-sm" style={{color:"var(--red)",padding:"4px 8px"}} onClick={() => delSource(s.id)}>✕</button>
+            </div>
+           ))
+          }
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Закрыть</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Settings Modal ────────────────────────────────────────────────────────────
+
+function SettingsModal({ onClose, toast }) {
+  const [settings, setSettings] = useState(null);
+  const [grokKey, setGrokKey] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [deeplKey, setDeeplKey] = useState("");
+  const [lang, setLang] = useState("ru");
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState({});
+
+  useEffect(() => {
+    api.get("/settings").then(s => { setSettings(s); setLang(s.preferred_language); }).catch(() => {});
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    const updates = { preferred_language: lang };
+    if (grokKey) updates.grok_api_key = grokKey;
+    if (openaiKey) updates.openai_api_key = openaiKey;
+    if (deeplKey) updates.deepl_api_key = deeplKey;
+    try { await api.patch("/settings", updates); toast("Сохранено ✓"); onClose(); } catch(e) { toast("Ошибка: " + e.message); }
+    setSaving(false);
+  }
+
+  async function test(service) {
+    setTesting(t => ({...t, [service]: "testing"}));
+    try {
+      const r = await api.post(`/settings/test/${service}`);
+      setTesting(t => ({...t, [service]: r.success ? "ok" : "fail"}));
+      toast(r.message);
+    } catch(e) { setTesting(t => ({...t, [service]: "fail"})); }
+  }
+
+  const statusIcon = (s) => ({ ok: "✓", fail: "✗", testing: "…" }[s] || "");
+  const statusColor = (s) => ({ ok: "var(--green)", fail: "var(--red)", testing: "var(--accent2)" }[s] || "var(--text3)");
+
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal">
+        <div className="modal-header">
+          <div className="modal-title">Настройки</div>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>✕</button>
+        </div>
+
+        <div style={{fontSize:12,fontWeight:700,color:"var(--accent2)",marginBottom:12}}>✦ AI Stack — GitHub Marketplace</div>
+
+        {[
+          ["Grok-3 API Key", grokKey, setGrokKey, "grok_api_key_set", "grok"],
+          ["OpenAI Embeddings Key", openaiKey, setOpenaiKey, "openai_api_key_set", "embeddings"],
+          ["DeepL API Key (optional)", deeplKey, setDeeplKey, "deepl_api_key_set", "deepl"],
+        ].map(([label, val, setter, keyName, svc]) => (
+          <div className="field" key={svc}>
+            <label style={{display:"flex",justifyContent:"space-between"}}>
+              {label}
+              {settings?.[keyName] && <span style={{color:"var(--green)",fontSize:10,fontWeight:700}}>✓ Установлен</span>}
+            </label>
+            <div style={{display:"flex",gap:8}}>
+              <input type="password" value={val} onChange={e => setter(e.target.value)} placeholder="Вставьте ключ..." style={{flex:1}} />
+              <button className="btn btn-secondary btn-sm" onClick={() => test(svc)} style={{color:statusColor(testing[svc])}}>
+                {testing[svc] === "testing" ? <span className="spinner spinner-sm" /> : `Тест ${statusIcon(testing[svc])}`}
+              </button>
+            </div>
+          </div>
+        ))}
+
+        <div className="field">
+          <label>Язык по умолчанию</label>
+          <select value={lang} onChange={e => setLang(e.target.value)}>
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
+          <button className="btn btn-primary" onClick={save} disabled={saving}>
+            {saving ? <span className="spinner spinner-sm" /> : "Сохранить"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main App ─────────────────────────────────────────────────────────────────
+
+function App() {
+  const { toasts, show: toast } = useToast();
+  const [user, setUser] = useState(api.user);
+  const [showAdmin, setShowAdmin] = useState(false);
+
+  const [feeds, setFeeds] = useState([]);
+  const [selectedFeed, setSelectedFeed] = useState(null);
+  const [clusters, setClusters] = useState([]);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
+  const [translatedIds, setTranslatedIds] = useState(new Set());
+
+  const [backendOnline, setBackendOnline] = useState(true);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [pipelineMsg, setPipelineMsg] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+
+  const [modal, setModal] = useState(null); // null | "new-feed" | "edit-feed" | "sources" | "settings"
+
+  // Polling
+  const pollRef = useRef(null);
+
+  useEffect(() => {
+    if (!user) return;
+    loadFeeds();
+    const interval = setInterval(checkHealth, 10000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  async function checkHealth() {
+    try { await api.get("/health"); setBackendOnline(true); } catch { setBackendOnline(false); }
+  }
+
+  async function loadFeeds() {
+    try { const f = await api.get("/feeds"); setFeeds(f); } catch(e) { toast("Ошибка загрузки лент"); }
+  }
+
+  async function loadClusters(feedId) {
+    try { setClusters(await api.get(`/feeds/${feedId}/clusters`)); } catch(e) {}
+  }
+
+  function selectFeed(feed) {
+    setSelectedFeed(feed);
+    setSelectedCluster(null);
+    setSelectedArticle(null);
+    setTranslatedIds(new Set());
+    loadClusters(feed.id);
+  }
+
+  async function selectCluster(cluster) {
+    setSelectedCluster(cluster);
+    setSelectedArticle(null);
+    if (!cluster.is_read) {
+      try { await api.patch(`/clusters/${cluster.id}/read`); } catch(e) {}
+      setClusters(cs => cs.map(c => c.id === cluster.id ? {...c, is_read: true} : c));
+      setFeeds(fs => fs.map(f => f.id === selectedFeed?.id ? {...f, unread_cluster_count: Math.max(0, f.unread_cluster_count-1)} : f));
+    }
+  }
+
+  async function runFeed() {
+    if (!selectedFeed || pipelineRunning) return;
+    setPipelineRunning(true); setPipelineMsg("Запуск сбора…");
+    try {
+      await api.post(`/feeds/${selectedFeed.id}/run`);
+      // Poll status
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts++;
+        try {
+          const s = await api.get(`/feeds/${selectedFeed.id}/status`);
+          setPipelineMsg(s.message);
+          if (s.status === "done" || s.status === "idle" || attempts > 60) {
+            clearInterval(pollRef.current);
+            setPipelineRunning(false);
+            await loadClusters(selectedFeed.id);
+            await loadFeeds();
+            if (s.articles_new > 0) toast(`Готово: +${s.articles_new} статей, ${s.clusters_created} историй`);
+            else toast("Сбор завершён — новых статей нет");
+          }
+        } catch(e) { clearInterval(pollRef.current); setPipelineRunning(false); }
+      }, 3000);
+    } catch(e) { toast("Ошибка: " + e.message); setPipelineRunning(false); }
+  }
+
+  async function translateAll() {
+    if (!selectedFeed) return;
+    const allTranslated = clusters.every(c => translatedIds.has(c.id));
+    const targetLang = allTranslated ? "original" : (selectedFeed.language || "ru");
+    let count = 0;
+    for (const c of filteredClusters) {
+      try {
+        const updated = await api.post(`/clusters/${c.id}/translate?target_lang=${targetLang}`);
+        setClusters(cs => cs.map(x => x.id === c.id ? updated : x));
+        setTranslatedIds(s => { const n = new Set(s); allTranslated ? n.delete(c.id) : n.add(c.id); return n; });
+        count++;
+      } catch(e) {}
+    }
+    toast(allTranslated ? `Восстановлено: ${count}` : `Переведено: ${count} историй`);
+  }
+
+  async function deleteFeed(id) {
+    if (!confirm("Удалить ленту и все её данные?")) return;
+    try {
+      await api.delete(`/feeds/${id}`);
+      setFeeds(f => f.filter(x => x.id !== id));
+      if (selectedFeed?.id === id) { setSelectedFeed(null); setClusters([]); }
+      toast("Лента удалена");
+    } catch(e) { toast("Ошибка: " + e.message); }
+  }
+
+  async function deleteCluster(id) {
+    try {
+      await api.delete(`/clusters/${id}`);
+      setClusters(cs => cs.filter(c => c.id !== id));
+      if (selectedCluster?.id === id) setSelectedCluster(null);
+      await loadFeeds();
+    } catch(e) { toast("Ошибка"); }
+  }
+
+  function logout() {
+    api.token = null; api.user = null;
+    localStorage.removeItem("nm_token"); localStorage.removeItem("nm_user");
+    setUser(null);
+  }
+
+  const filteredClusters = useMemo(() =>
+    unreadOnly ? clusters.filter(c => !c.is_read) : clusters,
+  [clusters, unreadOnly]);
+
+  if (!user) return <>
+    <AuthPage onLogin={u => setUser(u)} />
+    <ToastContainer toasts={toasts} />
+  </>;
+
+  if (showAdmin && user.role === "admin") return <>
+    <AdminPanel onBack={() => setShowAdmin(false)} toast={toast} />
+    <ToastContainer toasts={toasts} />
+  </>;
+
+  return (
+    <>
+      <div className="app">
+        {/* ── Left Panel ─────────────────────────────────────────────────── */}
+        <div className="left-panel">
+          <div className="panel-header">
+            <span className="panel-title">Ленты</span>
+            <div style={{width:7,height:7,borderRadius:"50%",background:backendOnline?"var(--green)":"var(--red)",flexShrink:0}} title={backendOnline?"Сервер онлайн":"Сервер недоступен"} />
+            <button className="btn btn-ghost btn-sm" onClick={() => setModal("new-feed")} style={{padding:"3px 7px",marginLeft:2}} title="Новая лента">+</button>
+          </div>
+
+          <div style={{flex:1,overflowY:"auto",padding:"4px 0"}}>
+            {feeds.length === 0 && (
+              <div style={{padding:"24px 16px",textAlign:"center",color:"var(--text3)",fontSize:12}}>
+                Нет лент.<br/>Нажмите + чтобы создать.
+              </div>
+            )}
+            {feeds.map(feed => (
+              <div key={feed.id} className={`feed-item ${selectedFeed?.id===feed.id?"active":""}`}
+                onClick={() => selectFeed(feed)}
+                onContextMenu={e => { e.preventDefault(); setSelectedFeed(feed); setModal("edit-feed"); }}>
+                <div className="feed-dot" style={{background: feed.is_active ? "var(--accent)" : "var(--text3)"}} />
+                <span className="feed-name">{feed.name}</span>
+                {feed.unread_cluster_count > 0 && <span className="feed-badge">{feed.unread_cluster_count}</span>}
+              </div>
+            ))}
+          </div>
+
+          <div className="panel-footer" style={{flexDirection:"column",gap:6,alignItems:"stretch"}}>
+            {selectedFeed && (
+              <button className="btn btn-primary btn-sm btn-full" onClick={runFeed} disabled={pipelineRunning}>
+                {pipelineRunning ? <><span className="spinner spinner-sm" /> Сбор…</> : "▶ Запустить"}
+              </button>
+            )}
+            <div style={{display:"flex",gap:6}}>
+              <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={() => setModal("settings")}>⚙ Настройки</button>
+              {user.role === "admin" && (
+                <button className="btn btn-ghost btn-sm" onClick={() => setShowAdmin(true)} title="Админ-панель">☰</button>
+              )}
+              <button className="btn btn-ghost btn-sm" onClick={logout} title="Выйти">⎋</button>
+            </div>
+            <div style={{fontSize:10,color:"var(--text3)",textAlign:"center"}}>{user.email}</div>
+          </div>
+        </div>
+
+        {/* ── Middle Panel (Clusters) ─────────────────────────────────────── */}
+        <div className="mid-panel">
+          <div className="panel-header">
+            <span className="panel-title" style={{flex:1}}>{selectedFeed?.name || "Нет ленты"}</span>
+            {selectedFeed && <>
+              <button className="btn btn-ghost btn-sm" onClick={() => setModal("sources")} title="Источники">≡</button>
+              <button className="btn btn-ghost btn-sm" onClick={translateAll} title="Перевести всё">🌐</button>
+            </>}
+          </div>
+
+          {/* Unread filter */}
+          {selectedFeed && (
+            <div style={{padding:"6px 14px",borderBottom:"1px solid var(--border)",display:"flex",gap:8,alignItems:"center"}}>
+              <label style={{display:"flex",alignItems:"center",gap:6,fontSize:11,color:"var(--text2)",cursor:"pointer"}}>
+                <input type="checkbox" checked={unreadOnly} onChange={e => setUnreadOnly(e.target.checked)} style={{accentColor:"var(--accent)"}} />
+                Только непрочитанные
+              </label>
+              <span style={{marginLeft:"auto",fontSize:11,color:"var(--text3)"}}>{filteredClusters.length} историй</span>
+            </div>
+          )}
+
+          {/* Pipeline status */}
+          {pipelineRunning && (
+            <div className="pipeline-bar">
+              <span className="spinner spinner-sm" />
+              <span className="pulse">{pipelineMsg}</span>
+            </div>
+          )}
+
+          <div style={{flex:1,overflowY:"auto"}}>
+            {!selectedFeed ? (
+              <div className="empty"><div className="empty-icon">📰</div><div className="empty-title">Выберите ленту</div></div>
+            ) : filteredClusters.length === 0 ? (
+              <div className="empty">
+                <div className="empty-icon">🗞</div>
+                <div className="empty-title">Нет историй</div>
+                <div className="empty-sub">Запустите сбор чтобы получить новости</div>
+              </div>
+            ) : filteredClusters.map(c => (
+              <div key={c.id} className={`cluster-card ${selectedCluster?.id===c.id?"active":""}`}
+                onClick={() => selectCluster(c)}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                  <div className={`cluster-title ${c.is_read?"read":""}`}>{c.title}</div>
+                  <button className="btn btn-ghost btn-sm" style={{padding:"1px 5px",fontSize:10,flexShrink:0,opacity:0.5}}
+                    onClick={e => { e.stopPropagation(); deleteCluster(c.id); }}>✕</button>
+                </div>
+                <div className="cluster-meta">
+                  <span>{relTime(c.latest_article_at || c.created_at)}</span>
+                  <span>·</span>
+                  <span>{c.article_count} ст.</span>
+                  {translatedIds.has(c.id) && <span style={{color:"var(--accent2)"}}>· Переведено</span>}
+                </div>
+                {c.articles?.length > 0 && (
+                  <div className="cluster-sub">
+                    {c.articles.slice(0,3).map(a => (
+                      <div key={a.id} className="cluster-sub-item">
+                        <span className="cluster-sub-dash">—</span>
+                        <span style={{flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {a.key_angle || a.title}
+                        </span>
+                      </div>
+                    ))}
+                    {c.articles.length > 3 && <div style={{fontSize:10,color:"var(--text3)",paddingLeft:14}}>+ ещё {c.articles.length-3}</div>}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Export footer */}
+          {selectedFeed && (
+            <div className="panel-footer">
+              <button className="btn btn-ghost btn-sm" onClick={async () => {
+                const md = await api.req("POST", "/export", {feed_id:selectedFeed.id,format:"markdown"}, true);
+                const text = await md.text();
+                navigator.clipboard.writeText(text); toast("Скопировано в буфер ✓");
+              }}>Копировать MD</button>
+              <button className="btn btn-ghost btn-sm" onClick={async () => {
+                const res = await fetch(API_BASE+"/export", {method:"POST",headers:api.headers(),body:JSON.stringify({feed_id:selectedFeed.id,format:"markdown"})});
+                const blob = await res.blob();
+                const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+                a.download = `${selectedFeed.name}.md`; a.click();
+              }}>↓ Экспорт MD</button>
+            </div>
+          )}
+        </div>
+
+        {/* ── Right Panel (Article Detail) ────────────────────────────────── */}
+        <div className="right-panel">
+          {!selectedCluster ? (
+            <div className="empty" style={{height:"100%"}}>
+              <div className="empty-icon">📖</div>
+              <div className="empty-title">Выберите новость</div>
+              <div className="empty-sub">Нажмите на историю в центральной панели</div>
+            </div>
+            ) : selectedArticle ? (
+  <>
+    <div className="panel-header">
+      <button className="btn btn-ghost btn-sm" onClick={() => setSelectedArticle(null)}>← Назад</button>
+      <span style={{flex:1,fontSize:12,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selectedArticle.title}</span>
+      <button className="btn btn-secondary btn-sm" onClick={() => copyToClipboard(selectedArticle.url, toast)}>🔗</button>
+      <a href={selectedArticle.url} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">↗ Открыть</a>
+    </div>
+    <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,padding:40}}>
+      <div style={{fontSize:15,fontWeight:600,color:"var(--text)",textAlign:"center",maxWidth:500,lineHeight:1.5}}>{selectedArticle.title}</div>
+      <div style={{fontSize:12,color:"var(--text3)"}}>{selectedArticle.sourceName} · {relTime(selectedArticle.published_at)}</div>
+      {selectedArticle.summary && <div style={{fontSize:13,color:"var(--text2)",textAlign:"center",maxWidth:500,lineHeight:1.7,userSelect:"text"}}>{selectedArticle.summary}</div>}
+      <a href={selectedArticle.url} target="_blank" rel="noreferrer" className="btn btn-primary">↗ Открыть статью</a>
+      <div style={{fontSize:11,color:"var(--text3)"}}>Некоторые сайты запрещают встроенный просмотр</div>
+    </div>
+  </>
+          ) : (
+            // Cluster detail
+            <>
+              <div className="panel-header">
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:14,lineHeight:1.3}}>{selectedCluster.title}</div>
+                  <div style={{fontSize:11,color:"var(--text3)",marginTop:2}}>
+                    {selectedCluster.article_count} статей · {relTime(selectedCluster.latest_article_at || selectedCluster.created_at)}
+                  </div>
+                </div>
+                <button className="btn btn-secondary btn-sm" onClick={async () => {
+                  const isT = translatedIds.has(selectedCluster.id);
+                  const tl = isT ? "original" : (selectedFeed?.language || "ru");
+                  try {
+                    const updated = await api.post(`/clusters/${selectedCluster.id}/translate?target_lang=${tl}`);
+                    setSelectedCluster(updated);
+                    setClusters(cs => cs.map(c => c.id === updated.id ? updated : c));
+                    setTranslatedIds(s => { const n=new Set(s); isT?n.delete(selectedCluster.id):n.add(selectedCluster.id); return n; });
+                    toast(isT ? "Восстановлено" : "Переведено ✓");
+                  } catch(e) { toast("Ошибка перевода"); }
+                }}>
+                  🌐 {translatedIds.has(selectedCluster.id) ? "Восстановить" : "Перевести"}
+                </button>
+              </div>
+
+              <div className="article-detail">
+                {/* Summary card */}
+                {(selectedCluster.summary || selectedCluster.why_it_matters) && (
+                  <div className="article-summary-card">
+                    <div className="summary-label">✦ Обзор истории</div>
+                    {selectedCluster.summary && <p style={{fontSize:13,lineHeight:1.7,color:"var(--text)",userSelect:"text"}}>{selectedCluster.summary}</p>}
+                    {selectedCluster.why_it_matters && (
+                      <div className="why-box">
+                        💡 {selectedCluster.why_it_matters}
+                      </div>
+                    )}
+                    {selectedCluster.key_angles?.length > 0 && (
+                      <div className="angles">
+                        {selectedCluster.key_angles.map((a,i) => <span key={i} className="angle-pill">{a}</span>)}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Articles */}
+                <div style={{fontSize:11,fontWeight:700,color:"var(--text2)",textTransform:"uppercase",letterSpacing:"0.8px",marginBottom:12}}>Статьи</div>
+                <div className="article-list">
+                  {selectedCluster.articles?.map(a => (
+                    <div key={a.id} className="article-row" onClick={() => setSelectedArticle(a)}>
+                      <div className="article-row-content">
+                        <div className="article-row-title">{a.title}</div>
+                        <div className="article-row-meta">
+                          <span>{a.source_name}</span>
+                          {a.published_at && <><span>·</span><span>{relTime(a.published_at)}</span></>}
+                          {a.key_angle && <><span>·</span><span style={{color:"var(--accent2)"}}>{a.key_angle}</span></>}
+                        </div>
+                        {a.summary && <div className="article-row-summary" style={{userSelect:"text"}}>{a.summary}</div>}
+                      </div>
+                      <div className="article-row-actions">
+                        <button className="btn btn-ghost btn-sm" title="Копировать ссылку"
+                          onClick={e => { e.stopPropagation(); copyToClipboard(a.url, toast); }}>🔗</button>
+                        <button className="btn btn-ghost btn-sm" title="Открыть в новой вкладке"
+                          onClick={e => { e.stopPropagation(); window.open(a.url, "_blank"); }}>↗</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modals */}
+      {modal === "new-feed" && (
+        <FeedModal onClose={() => setModal(null)} toast={toast}
+          onSave={async () => { setModal(null); await loadFeeds(); toast("Лента создана ✓"); }} />
+      )}
+      {modal === "edit-feed" && selectedFeed && (
+        <FeedModal feed={selectedFeed} onClose={() => setModal(null)} toast={toast}
+          onSave={async () => { setModal(null); await loadFeeds(); toast("Сохранено ✓"); }} />
+      )}
+      {modal === "sources" && selectedFeed && (
+        <SourcesModal feed={selectedFeed} onClose={() => setModal(null)} toast={toast} />
+      )}
+      {modal === "settings" && (
+        <SettingsModal onClose={() => setModal(null)} toast={toast} />
+      )}
+
+      <ToastContainer toasts={toasts} />
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
