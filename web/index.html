@@ -197,7 +197,7 @@ const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 // ─── API Client ───────────────────────────────────────────────────────────────
 
-const API_BASE = "http://127.0.0.1:8000";
+const API_BASE = window.location.origin;
 
 const api = {
   token: localStorage.getItem("nm_token"),
