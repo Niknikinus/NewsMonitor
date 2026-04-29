@@ -13,34 +13,47 @@ async def ask_grok(
     system: str = "You are a helpful news analysis assistant.",
     max_tokens: int = 1000,
     temperature: float = 0.3,
+    max_retries: int = 5,
 ) -> str:
-    """Send a prompt to Grok-3 via GitHub Marketplace OpenAI-compatible endpoint."""
     if not settings.grok_api_key:
         return ""
 
     messages = [{"role": "user", "content": prompt}]
 
-    try:
-        async with httpx.AsyncClient(timeout=60) as client:
-            resp = await client.post(
-                f"{settings.grok_api_base}/chat/completions",
-                headers={
-                    "Authorization": f"Bearer {settings.grok_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.grok_model,
-                    "messages": [{"role": "system", "content": system}] + messages,
-                    "max_tokens": max_tokens,
-                    "temperature": temperature,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["choices"][0]["message"]["content"]
-    except Exception as e:
-        logger.error(f"Grok-3 error: {e}")
-        return ""
+    for attempt in range(max_retries):
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{settings.grok_api_base}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {settings.grok_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.grok_model,
+                        "messages": [{"role": "system", "content": system}] + messages,
+                        "max_tokens": max_tokens,
+                        "temperature": temperature,
+                    },
+                )
+                if resp.status_code == 429:
+                    wait = 2 ** attempt  # 1, 2, 4, 8, 16 сек
+                    logger.warning(f"Grok-3 rate limited, waiting {wait}s (attempt {attempt+1}/{max_retries})")
+                    await asyncio.sleep(wait)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+        except Exception as e:
+            if "429" in str(e):
+                wait = 2 ** attempt
+                await asyncio.sleep(wait)
+                continue
+            logger.error(f"Grok-3 error: {e}")
+            return ""
+
+    logger.error("Grok-3 max retries exceeded")
+    return ""
 
 
 # ─── Local LLM (Ollama/Qwen2.5) ──────────────────────────────────────────────
