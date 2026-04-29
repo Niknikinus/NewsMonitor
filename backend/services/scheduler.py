@@ -122,7 +122,7 @@ async def run_feed_pipeline(
             text = f"{art['title']} {art['body'][:500]}"
             art["embedding"] = await get_embedding(text)
 
-        emb_semaphore = asyncio.Semaphore(5)
+        emb_semaphore = asyncio.Semaphore(2)
         async def embed_limited(art):
             async with emb_semaphore:
                 await embed_one(art)
@@ -173,7 +173,7 @@ async def run_feed_pipeline(
             await assign_article_key_angles(group, meta["key_angles"])
 
             # Summarize articles in parallel (capped at 3 concurrent AI calls)
-            ai_sem = asyncio.Semaphore(3)
+            ai_sem = asyncio.Semaphore(1)
 
             async def process_article(art: Dict):
                 async with ai_sem:
