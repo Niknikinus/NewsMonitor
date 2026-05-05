@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import numpy as np
@@ -8,6 +9,8 @@ from config import settings
 
 logger = logging.getLogger(__name__)
 
+_RETRY_DELAYS = [2, 5, 15]
+
 
 async def get_embedding(text: str) -> Optional[List[float]]:
     """Get a single embedding vector via OpenAI-compatible API (GitHub Marketplace)."""
@@ -17,26 +20,36 @@ async def get_embedding(text: str) -> Optional[List[float]]:
 
     text = text.replace("\n", " ")[:8000]
 
-    try:
-        async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(
-                f"{settings.openai_api_base}/embeddings",
-                headers={
-                    "Authorization": f"Bearer {settings.openai_api_key}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": settings.openai_embedding_model,
-                    "input": text,
-                    "encoding_format": "float",
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            return data["data"][0]["embedding"]
-    except Exception as e:
-        logger.error(f"Embedding error: {e}")
-        return None
+    for attempt, delay in enumerate([0] + _RETRY_DELAYS):
+        if delay:
+            await asyncio.sleep(delay)
+        try:
+            async with httpx.AsyncClient(timeout=30) as client:
+                resp = await client.post(
+                    f"{settings.openai_api_base}/embeddings",
+                    headers={
+                        "Authorization": f"Bearer {settings.openai_api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": settings.openai_embedding_model,
+                        "input": text,
+                        "encoding_format": "float",
+                    },
+                )
+                if resp.status_code == 429:
+                    logger.warning(f"Embedding rate limited, retry {attempt + 1}/{len(_RETRY_DELAYS)}")
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                return data["data"][0]["embedding"]
+        except httpx.HTTPStatusError:
+            raise
+        except Exception as e:
+            logger.error(f"Embedding error: {e}")
+            return None
+    logger.error("Embedding error: gave up after rate-limit retries")
+    return None
 
 
 async def get_embeddings_batch(texts: List[str]) -> List[Optional[List[float]]]:

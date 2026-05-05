@@ -122,7 +122,7 @@ async def run_feed_pipeline(
             text = f"{art['title']} {art['body'][:500]}"
             art["embedding"] = await get_embedding(text)
 
-        emb_semaphore = asyncio.Semaphore(2)
+        emb_semaphore = asyncio.Semaphore(5)
         async def embed_limited(art):
             async with emb_semaphore:
                 await embed_one(art)
@@ -131,7 +131,7 @@ async def run_feed_pipeline(
 
         # ── Step 5: Embedding-based dedup ─────────────────────────────────
         update("Дедупликация…")
-        raw_articles = await find_embedding_duplicates(db, raw_articles)
+        raw_articles = await find_embedding_duplicates(db, raw_articles, feed_id=feed_id)
         await store_embeddings(db, raw_articles)
 
         articles_new = len(raw_articles)
@@ -153,10 +153,12 @@ async def run_feed_pipeline(
             meta = await generate_cluster_metadata(group)
 
             # Compute latest article publication time for sorting
-            latest_pub = max(
-                (a.get("published_at") or a.get("fetched_at") for a in group),
-                default=None
-            )
+            pub_times = [
+                a.get("published_at") or a.get("fetched_at")
+                for a in group
+                if a.get("published_at") or a.get("fetched_at")
+            ]
+            latest_pub = max(pub_times) if pub_times else None
 
             cluster = ClusterModel(
                 feed_id=feed_id,
@@ -173,7 +175,7 @@ async def run_feed_pipeline(
             await assign_article_key_angles(group, meta["key_angles"])
 
             # Summarize articles in parallel (capped at 3 concurrent AI calls)
-            ai_sem = asyncio.Semaphore(1)
+            ai_sem = asyncio.Semaphore(3)
 
             async def process_article(art: Dict):
                 async with ai_sem:

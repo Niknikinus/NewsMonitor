@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from models.database import ArticleModel, EmbeddingModel
+from models.database import ArticleModel, EmbeddingModel, SourceModel
 from services.embeddings import (
     cosine_similarity,
     deserialize_embedding,
@@ -21,30 +21,42 @@ logger = logging.getLogger(__name__)
 async def find_embedding_duplicates(
     db: AsyncSession,
     new_articles: List[Dict],
+    feed_id: Optional[int] = None,
 ) -> List[Dict]:
     """
     Mark articles as duplicates if cosine similarity with any stored embedding
     exceeds the dedup threshold.
+    Scoped to feed_id so articles from different feeds don't cross-contaminate.
     Returns filtered list (non-duplicates).
     """
     if not settings.openai_api_key:
         logger.info("Embeddings disabled — skipping dedup step 1")
         return new_articles
 
-    # Load stored embeddings
-    result = await db.execute(select(EmbeddingModel))
+    # Load stored embeddings scoped to this feed to prevent cross-feed false positives
+    if feed_id is not None:
+        result = await db.execute(
+            select(EmbeddingModel)
+            .join(ArticleModel, ArticleModel.url == EmbeddingModel.article_url)
+            .join(SourceModel, SourceModel.id == ArticleModel.source_id)
+            .where(SourceModel.feed_id == feed_id)
+        )
+    else:
+        result = await db.execute(select(EmbeddingModel))
     stored: List[EmbeddingModel] = result.scalars().all()
     stored_vecs = [(e.article_url, deserialize_embedding(e.embedding)) for e in stored]
 
     non_dupes = []
 
     for art in new_articles:
-        text = f"{art['title']} {art['body'][:500]}"
-        emb = await get_embedding(text)
+        # Reuse pre-computed embedding from the pipeline's Step 4 if available
+        emb = art.get("embedding")
+        if emb is None:
+            text = f"{art['title']} {art['body'][:500]}"
+            emb = await get_embedding(text)
 
         if emb is None:
             # Can't check — assume not duplicate
-            art["embedding"] = None
             non_dupes.append(art)
             continue
 

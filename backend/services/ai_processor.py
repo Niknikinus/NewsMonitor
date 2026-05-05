@@ -1,9 +1,12 @@
+import asyncio
 import httpx
 import logging
 from typing import Optional, Dict, List
 from config import settings
 
 logger = logging.getLogger(__name__)
+
+_RETRY_DELAYS = [2, 5, 15]  # seconds between retries on 429
 
 
 # ─── Grok-3 via GitHub Marketplace ───────────────────────────────────────────
@@ -13,14 +16,16 @@ async def ask_grok(
     system: str = "You are a helpful news analysis assistant.",
     max_tokens: int = 1000,
     temperature: float = 0.3,
-    max_retries: int = 5,
 ) -> str:
+    """Send a prompt to Grok-3 via GitHub Marketplace OpenAI-compatible endpoint."""
     if not settings.grok_api_key:
         return ""
 
     messages = [{"role": "user", "content": prompt}]
 
-    for attempt in range(max_retries):
+    for attempt, delay in enumerate([0] + _RETRY_DELAYS):
+        if delay:
+            await asyncio.sleep(delay)
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 resp = await client.post(
@@ -37,22 +42,17 @@ async def ask_grok(
                     },
                 )
                 if resp.status_code == 429:
-                    wait = 2 ** attempt  # 1, 2, 4, 8, 16 сек
-                    logger.warning(f"Grok-3 rate limited, waiting {wait}s (attempt {attempt+1}/{max_retries})")
-                    await asyncio.sleep(wait)
+                    logger.warning(f"Grok-3 rate limited, retry {attempt + 1}/{len(_RETRY_DELAYS)}")
                     continue
                 resp.raise_for_status()
                 data = resp.json()
                 return data["choices"][0]["message"]["content"]
+        except httpx.HTTPStatusError:
+            raise
         except Exception as e:
-            if "429" in str(e):
-                wait = 2 ** attempt
-                await asyncio.sleep(wait)
-                continue
             logger.error(f"Grok-3 error: {e}")
             return ""
-
-    logger.error("Grok-3 max retries exceeded")
+    logger.error("Grok-3 error: gave up after rate-limit retries")
     return ""
 
 
@@ -206,8 +206,9 @@ Important: Return ONLY a valid JSON array. No markdown, no explanation, no pream
 
     resp = await ask_grok(prompt, max_tokens=1500)
     try:
-        import json
-        clean = resp.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+        import json, re
+        clean = re.sub(r"^```(?:json)?\s*", "", resp.strip())
+        clean = re.sub(r"\s*```$", "", clean).strip()
         return json.loads(clean)
     except Exception as e:
         logger.error(f"Source discovery parse error: {e}")

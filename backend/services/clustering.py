@@ -35,6 +35,7 @@ async def cluster_articles(articles: List[Dict]) -> List[List[Dict]]:
 
     # Simple greedy clustering without sklearn
     threshold = settings.cluster_cosine_threshold
+    n = len(articles)
     labels = [-1] * n
     next_label = 0
 
@@ -92,9 +93,10 @@ Respond with ONLY valid JSON, no markdown, no preamble."""
     response = await ask_grok(prompt, max_tokens=500)
 
     try:
-        import json
-        # Strip any markdown fences
-        clean = response.strip().lstrip("```json").lstrip("```").rstrip("```").strip()
+        import json, re
+        # Strip optional ```json ... ``` markdown fences
+        clean = re.sub(r"^```(?:json)?\s*", "", response.strip())
+        clean = re.sub(r"\s*```$", "", clean).strip()
         data = json.loads(clean)
         return {
             "title": data.get("title", articles[0].get("title", "Untitled")),
